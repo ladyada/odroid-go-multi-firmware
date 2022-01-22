@@ -13,4 +13,6 @@ string(TIMESTAMP TODAY "%Y%m%d")
 
 set(PROJECT_VER "${TODAY}-${GITREV}")
 
+#add_compile_definitions(TARGET_QTPY_ESP32_PICO)
+
 project(odroid-go-multi-firmware)

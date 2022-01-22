@@ -34,6 +34,20 @@ fail:
     ESP_LOGE(__func__, "Read from 0x%02x failed. reg=%d, err=0x%x\n", addr, reg, err);
     return false;
 }
+
+#elif defined(TARGET_QTPY_ESP32_PICO)
+// MEME FIX
+#define ODROID_GAMEPAD_IO_UP GPIO_NUM_34
+#define ODROID_GAMEPAD_IO_DOWN GPIO_NUM_35
+#define ODROID_GAMEPAD_IO_LEFT GPIO_NUM_36
+#define ODROID_GAMEPAD_IO_RIGHT GPIO_NUM_37
+#define ODROID_GAMEPAD_IO_SELECT GPIO_NUM_38
+#define ODROID_GAMEPAD_IO_START GPIO_NUM_39
+#define ODROID_GAMEPAD_IO_A GPIO_NUM_21  // NC
+#define ODROID_GAMEPAD_IO_B GPIO_NUM_15   // A0
+#define ODROID_GAMEPAD_IO_MENU GPIO_NUM_0 // button
+#define ODROID_GAMEPAD_IO_VOLUME GPIO_NUM_2 // NC
+
 #else
 #define ODROID_GAMEPAD_IO_X ADC1_CHANNEL_6
 #define ODROID_GAMEPAD_IO_Y ADC1_CHANNEL_7
@@ -69,6 +83,17 @@ uint32_t input_read_raw(void)
         if (buttons & (1 << 6)) state |= (1 << ODROID_INPUT_A);
         if (buttons & (1 << 7)) state |= (1 << ODROID_INPUT_B);
     }
+#elif defined(TARGET_QTPY_ESP32_PICO)
+    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_UP)) ? (1 << ODROID_INPUT_UP) : 0;
+    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_DOWN)) ? (1 << ODROID_INPUT_DOWN) : 0;
+    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_LEFT)) ? (1 << ODROID_INPUT_LEFT) : 0;
+    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_RIGHT)) ? (1 << ODROID_INPUT_RIGHT) : 0;
+    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_SELECT)) ? (1 << ODROID_INPUT_SELECT) : 0;
+    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_START)) ? (1 << ODROID_INPUT_START) : 0;
+    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_A)) ? (1 << ODROID_INPUT_A) : 0;
+    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_B)) ? (1 << ODROID_INPUT_B) : 0;
+    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_MENU)) ? (1 << ODROID_INPUT_MENU) : 0;
+    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_VOLUME)) ? (1 << ODROID_INPUT_VOLUME) : 0;
 #else
     int joyX = adc1_get_raw(ODROID_GAMEPAD_IO_X);
     int joyY = adc1_get_raw(ODROID_GAMEPAD_IO_Y);
@@ -180,6 +205,34 @@ void input_init(void)
     TRY(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
     ESP_LOGI(__func__, "I2C driver ready (SDA:%d SCL:%d).\n", i2c_config.sda_io_num, i2c_config.scl_io_num);
     fail:
+
+#elif defined(TARGET_QTPY_ESP32_PICO)
+    gpio_set_direction(ODROID_GAMEPAD_IO_UP, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(ODROID_GAMEPAD_IO_UP, GPIO_PULLUP_ONLY);
+    gpio_set_direction(ODROID_GAMEPAD_IO_DOWN, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(ODROID_GAMEPAD_IO_DOWN, GPIO_PULLUP_ONLY);
+    gpio_set_direction(ODROID_GAMEPAD_IO_LEFT, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(ODROID_GAMEPAD_IO_LEFT, GPIO_PULLUP_ONLY);
+    gpio_set_direction(ODROID_GAMEPAD_IO_RIGHT, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(ODROID_GAMEPAD_IO_RIGHT, GPIO_PULLUP_ONLY);
+
+    gpio_set_direction(ODROID_GAMEPAD_IO_SELECT, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(ODROID_GAMEPAD_IO_SELECT, GPIO_PULLUP_ONLY);
+
+    gpio_set_direction(ODROID_GAMEPAD_IO_START, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(ODROID_GAMEPAD_IO_START, GPIO_PULLUP_ONLY);
+
+    gpio_set_direction(ODROID_GAMEPAD_IO_A, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(ODROID_GAMEPAD_IO_A, GPIO_PULLUP_ONLY);
+
+    gpio_set_direction(ODROID_GAMEPAD_IO_B, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(ODROID_GAMEPAD_IO_B, GPIO_PULLUP_ONLY);
+
+    gpio_set_direction(ODROID_GAMEPAD_IO_MENU, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(ODROID_GAMEPAD_IO_MENU, GPIO_PULLUP_ONLY);
+
+    gpio_set_direction(ODROID_GAMEPAD_IO_VOLUME, GPIO_MODE_INPUT);
+
 #else
     gpio_set_direction(ODROID_GAMEPAD_IO_SELECT, GPIO_MODE_INPUT);
     gpio_set_pull_mode(ODROID_GAMEPAD_IO_SELECT, GPIO_PULLUP_ONLY);

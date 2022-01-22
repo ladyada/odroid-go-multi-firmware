@@ -25,7 +25,21 @@ extern void ff_diskio_register_sdmmc(unsigned char pdrv, sdmmc_card_t* card);
         host_config.max_freq_khz = SDMMC_FREQ_HIGHSPEED; \
         sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT(); \
         slot_config.width = 1;
+#elif defined(TARGET_QTPY_ESP32_PICO)
+
+#define DECLARE_SDCARD_CONFIG() \
+        sdmmc_host_t host_config = SDSPI_HOST_DEFAULT(); \
+        host_config.slot = HSPI_HOST; \
+        host_config.max_freq_khz = SDMMC_FREQ_DEFAULT; \
+        sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT(); \
+        slot_config.gpio_miso = GPIO_NUM_12; \
+        slot_config.gpio_mosi = GPIO_NUM_13; \
+        slot_config.gpio_sck  = GPIO_NUM_14; \
+        slot_config.gpio_cs = GPIO_NUM_32; \
+        //slot_config.dma_channel = 2;
+
 #else
+
 #define DECLARE_SDCARD_CONFIG() \
         sdmmc_host_t host_config = SDSPI_HOST_DEFAULT(); \
         host_config.slot = HSPI_HOST; \
