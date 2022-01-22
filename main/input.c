@@ -50,7 +50,7 @@ static bool rg_i2c_write8(uint8_t addr, int reg, uint8_t write_data)
 {
     esp_err_t err = ESP_FAIL;
 
-    ESP_LOGI(__func__, "Writing 0x%02x to 0x%02x...", write_data, reg);
+    //ESP_LOGI(__func__, "Writing 0x%02x to 0x%02x...", write_data, reg);
  
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     TRY(i2c_master_start(cmd));
@@ -60,7 +60,7 @@ static bool rg_i2c_write8(uint8_t addr, int reg, uint8_t write_data)
     TRY(i2c_master_stop(cmd));
     TRY(i2c_master_cmd_begin(I2C_NUM_0, cmd, pdMS_TO_TICKS(500)));
     i2c_cmd_link_delete(cmd);
-    ESP_LOGI(__func__, "Done\n");
+    //ESP_LOGI(__func__, "Done\n");
     return true;
 
 fail:
