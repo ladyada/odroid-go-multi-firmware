@@ -139,18 +139,27 @@ uint32_t input_read_raw(void)
         if (buttons & (1 << 7)) state |= (1 << ODROID_INPUT_B);
     }
 #elif defined(TARGET_QTPY_ESP32_PICO)
-    /*
-    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_UP)) ? (1 << ODROID_INPUT_UP) : 0;
-    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_DOWN)) ? (1 << ODROID_INPUT_DOWN) : 0;
-    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_LEFT)) ? (1 << ODROID_INPUT_LEFT) : 0;
-    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_RIGHT)) ? (1 << ODROID_INPUT_RIGHT) : 0;
-    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_SELECT)) ? (1 << ODROID_INPUT_SELECT) : 0;
-    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_START)) ? (1 << ODROID_INPUT_START) : 0;
-    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_A)) ? (1 << ODROID_INPUT_A) : 0;
-    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_B)) ? (1 << ODROID_INPUT_B) : 0;
-    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_MENU)) ? (1 << ODROID_INPUT_MENU) : 0;
-    state |= (!gpio_get_level(ODROID_GAMEPAD_IO_VOLUME)) ? (1 << ODROID_INPUT_VOLUME) : 0;
-    */
+    uint16_t aw_buttons = 0;
+    uint8_t d;
+    rg_i2c_read(AW9523_DEFAULT_ADDR, AW9523_REG_INPUT0+1, &d, 1);
+    aw_buttons = d;
+    aw_buttons <<= 8;
+    rg_i2c_read(AW9523_DEFAULT_ADDR, AW9523_REG_INPUT0, &d, 1);
+    aw_buttons |= d;
+
+    //ESP_LOGI(__func__, "AW9523 buttons pressed: 0x%x found\n", ~aw_buttons);
+
+    state |= (~aw_buttons & (1<<AW_GAMEPAD_IO_UP)) ? (1 << ODROID_INPUT_UP) : 0;
+    state |= (~aw_buttons & (1<<AW_GAMEPAD_IO_DOWN)) ? (1 << ODROID_INPUT_DOWN) : 0;
+    state |= (~aw_buttons & (1<<AW_GAMEPAD_IO_LEFT)) ? (1 << ODROID_INPUT_LEFT) : 0;
+    state |= (~aw_buttons & (1<<AW_GAMEPAD_IO_RIGHT)) ? (1 << ODROID_INPUT_RIGHT) : 0;
+    state |= (~aw_buttons & (1<<AW_GAMEPAD_IO_SELECT)) ? (1 << ODROID_INPUT_SELECT) : 0;
+    state |= (~aw_buttons & (1<<AW_GAMEPAD_IO_START)) ? (1 << ODROID_INPUT_START) : 0;
+    state |= (~aw_buttons & (1<<AW_GAMEPAD_IO_A)) ? (1 << ODROID_INPUT_A) : 0;
+    state |= (~aw_buttons & (1<<AW_GAMEPAD_IO_B)) ? (1 << ODROID_INPUT_B) : 0;
+    state |= (~aw_buttons & (1<<AW_GAMEPAD_IO_MENU)) ? (1 << ODROID_INPUT_MENU) : 0;
+    state |= (~aw_buttons & (1<<AW_GAMEPAD_IO_VOLUME)) ? (1 << ODROID_INPUT_VOLUME) : 0;
+
 #else
     int joyX = adc1_get_raw(ODROID_GAMEPAD_IO_X);
     int joyY = adc1_get_raw(ODROID_GAMEPAD_IO_Y);

@@ -114,6 +114,7 @@ int odroid_sdcard_files_get(const char* path, const char* extension, char*** fil
     char** result = (char**)malloc(MAX_FILES * sizeof(void*));
     if (!result) abort();
 
+    ESP_LOGI(__func__, "Checking for files in path %s", path);
 
     DIR *dir = opendir(path);
     if( dir == NULL )
@@ -129,7 +130,7 @@ int odroid_sdcard_files_get(const char* path, const char* extension, char*** fil
     while ((entry = readdir(dir)))
     {
         size_t len = strlen(entry->d_name);
-
+        ESP_LOGI(__func__, "Found file: %s", entry->d_name);
         if (len < extensionLength)
             continue;
 

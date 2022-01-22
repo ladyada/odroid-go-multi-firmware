@@ -71,7 +71,7 @@
 #elif defined(TARGET_QTPY_ESP32_PICO)
 #define HEADER_LENGTH 24
 #define HEADER_V00_01 "ODROIDGO_FIRMWARE_V00_01"
-#define FIRMWARE_PATH SDCARD_BASE_PATH "/odroid/firmware"
+#define FIRMWARE_PATH SDCARD_BASE_PATH "/"
 #else
 #define HEADER_LENGTH 24
 #define HEADER_V00_01 "ODROIDGO_FIRMWARE_V00_01"
@@ -159,7 +159,7 @@ static void UpdateDisplay(void)
 static void DisplayCenter(int top, const char *str)
 {
     const int maxlen = SCREEN_WIDTH / (gui.font.char_width + 1);
-    int left = RG_MAX(0, (SCREEN_WIDTH - strlen(str) * (gui.font.char_width + 1)) / 2);
+    int left = RG_MAX(0, (SCREEN_WIDTH - RG_MIN(maxlen, strlen(str)) * (gui.font.char_width + 1)) / 2);
     int height = gui.font.char_height + 4 + 4;
     char tempstring[128] = {0};
 
@@ -170,7 +170,11 @@ static void DisplayCenter(int top, const char *str)
 static void DisplayPage(const char *title, const char *footer)
 {
     UG_FillFrame(0, 0, SCREEN_WIDTH-1, SCREEN_HEIGHT-1, C_WHITE);
-    UG_FontSelect(&FONT_8X8);
+    if (SCREEN_WIDTH <= 240) {
+      UG_FontSelect(&FONT_6X8);
+    } else {
+      UG_FontSelect(&FONT_8X8);
+    }
     UG_SetBackcolor(C_MIDNIGHT_BLUE);
     UG_SetForecolor(C_WHITE);
     DisplayCenter(0, title);
@@ -182,7 +186,11 @@ static void DisplayIndicators(int page, int totalPages)
 {
     char tempstring[128];
 
-    UG_FontSelect(&FONT_8X8);
+    if (SCREEN_WIDTH <= 240) {
+      UG_FontSelect(&FONT_6X8);
+    } else {
+      UG_FontSelect(&FONT_8X8);
+    }
     UG_SetForecolor(0x8C51);
 
     // Page indicator
@@ -215,7 +223,11 @@ static void DisplayMessage(const char *message)
 
 static void DisplayNotification(const char *message)
 {
-    UG_FontSelect(&FONT_8X8);
+    if (SCREEN_WIDTH <= 240) {
+      UG_FontSelect(&FONT_6X8);
+    } else {
+      UG_FontSelect(&FONT_8X8);
+    }
     UG_SetForecolor(C_WHITE);
     UG_SetBackcolor(C_BLUE);
     DisplayCenter(SCREEN_HEIGHT - 16, message);
