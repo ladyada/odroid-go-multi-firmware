@@ -20,8 +20,8 @@
 #define LCD_PIN_NUM_DC   GPIO_NUM_7  // RX
 #define LCD_PIN_NUM_BCKL GPIO_NUM_20 // NC
 
-#define SCREEN_OFFSET_TOP 0
-#define SCREEN_WIDTH 320
+#define SCREEN_OFFSET_TOP 80
+#define SCREEN_WIDTH 240
 #define SCREEN_HEIGHT 240
 
 #else

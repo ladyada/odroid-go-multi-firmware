@@ -1415,8 +1415,13 @@ void app_main(void)
 
     // Has to be before LCD
     sdcardret = odroid_sdcard_open();
+#if defined(TARGET_QTPY_ESP32_PICO)
+    input_init();
+    ili9341_init();
+#else
     ili9341_init();
     input_init();
+#endif
 
     UG_Init(&gui, pset, SCREEN_WIDTH, SCREEN_HEIGHT);
 

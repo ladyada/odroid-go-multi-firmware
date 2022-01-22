@@ -8,7 +8,18 @@
 
 #include "input.h"
 
-#ifdef TARGET_MRGC_G32
+#define AW9523_DEFAULT_ADDR 0x58
+#define AW9523_REG_CHIPID 0x10     ///< Register for hardcode chip ID
+#define AW9523_REG_SOFTRESET 0x7F  ///< Register for soft resetting
+#define AW9523_REG_INPUT0 0x00     ///< Register for reading input values
+#define AW9523_REG_OUTPUT0 0x02    ///< Register for writing output values
+#define AW9523_REG_CONFIG0 0x04    ///< Register for configuring direction
+#define AW9523_REG_INTENABLE0 0x06 ///< Register for enabling interrupt
+#define AW9523_REG_GCR 0x11        ///< Register for general configuration
+#define AW9523_REG_LEDMODE 0x12    ///< Register for configuring const current
+
+
+#if defined(TARGET_MRGC_G32) || defined(TARGET_QTPY_ESP32_PICO)
 #define TRY(x) if ((err = (x)) != ESP_OK) { goto fail; }
 
 static bool rg_i2c_read(uint8_t addr, int reg, void *read_data, size_t read_len)
@@ -35,18 +46,62 @@ fail:
     return false;
 }
 
-#elif defined(TARGET_QTPY_ESP32_PICO)
-// MEME FIX
-#define ODROID_GAMEPAD_IO_UP GPIO_NUM_34
-#define ODROID_GAMEPAD_IO_DOWN GPIO_NUM_35
-#define ODROID_GAMEPAD_IO_LEFT GPIO_NUM_36
-#define ODROID_GAMEPAD_IO_RIGHT GPIO_NUM_37
-#define ODROID_GAMEPAD_IO_SELECT GPIO_NUM_38
-#define ODROID_GAMEPAD_IO_START GPIO_NUM_39
-#define ODROID_GAMEPAD_IO_A GPIO_NUM_21  // NC
-#define ODROID_GAMEPAD_IO_B GPIO_NUM_15   // A0
-#define ODROID_GAMEPAD_IO_MENU GPIO_NUM_0 // button
-#define ODROID_GAMEPAD_IO_VOLUME GPIO_NUM_2 // NC
+static bool rg_i2c_write8(uint8_t addr, int reg, uint8_t write_data)
+{
+    esp_err_t err = ESP_FAIL;
+
+    ESP_LOGI(__func__, "Writing 0x%02x to 0x%02x...", write_data, reg);
+ 
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    TRY(i2c_master_start(cmd));
+    TRY(i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_WRITE, true));
+    TRY(i2c_master_write_byte(cmd, (uint8_t)reg, true));
+    TRY(i2c_master_write_byte(cmd, (uint8_t)write_data, true));
+    TRY(i2c_master_stop(cmd));
+    TRY(i2c_master_cmd_begin(I2C_NUM_0, cmd, pdMS_TO_TICKS(500)));
+    i2c_cmd_link_delete(cmd);
+    ESP_LOGI(__func__, "Done\n");
+    return true;
+
+fail:
+    ESP_LOGE(__func__, "Write to 0x%02x failed. reg=%d, err=0x%x\n", addr, reg, err);
+    return false;
+}
+
+bool aw_digitalWrite(uint8_t pin, bool value) {
+  uint16_t pins;
+  uint8_t c;
+  rg_i2c_read(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0+1, &c, 1);
+  pins = c;
+  pins <<= 8;
+  rg_i2c_read(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0, &c, 1);
+  pins |= c;
+
+  if (value) {
+    pins |= 1UL << pin;
+  } else {
+    pins &= ~(1UL << pin);
+  }
+  rg_i2c_write8(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0, pins);
+  return rg_i2c_write8(AW9523_DEFAULT_ADDR, AW9523_REG_OUTPUT0+1, pins>>8);
+}
+
+#if defined(TARGET_QTPY_ESP32_PICO)
+#define AW_GAMEPAD_IO_UP 10
+#define AW_GAMEPAD_IO_DOWN 13
+#define AW_GAMEPAD_IO_LEFT 14
+#define AW_GAMEPAD_IO_RIGHT 12
+#define AW_GAMEPAD_IO_SELECT 2
+#define AW_GAMEPAD_IO_START 4
+#define AW_GAMEPAD_IO_A 6
+#define AW_GAMEPAD_IO_B 7
+#define AW_GAMEPAD_IO_MENU 11
+#define AW_GAMEPAD_IO_VOLUME 5
+#define AW_CARDDET 1
+#define AW_TFT_RESET 8
+#define AW_TFT_BACKLIGHT 3
+
+#endif
 
 #else
 #define ODROID_GAMEPAD_IO_X ADC1_CHANNEL_6
@@ -84,6 +139,7 @@ uint32_t input_read_raw(void)
         if (buttons & (1 << 7)) state |= (1 << ODROID_INPUT_B);
     }
 #elif defined(TARGET_QTPY_ESP32_PICO)
+    /*
     state |= (!gpio_get_level(ODROID_GAMEPAD_IO_UP)) ? (1 << ODROID_INPUT_UP) : 0;
     state |= (!gpio_get_level(ODROID_GAMEPAD_IO_DOWN)) ? (1 << ODROID_INPUT_DOWN) : 0;
     state |= (!gpio_get_level(ODROID_GAMEPAD_IO_LEFT)) ? (1 << ODROID_INPUT_LEFT) : 0;
@@ -94,6 +150,7 @@ uint32_t input_read_raw(void)
     state |= (!gpio_get_level(ODROID_GAMEPAD_IO_B)) ? (1 << ODROID_INPUT_B) : 0;
     state |= (!gpio_get_level(ODROID_GAMEPAD_IO_MENU)) ? (1 << ODROID_INPUT_MENU) : 0;
     state |= (!gpio_get_level(ODROID_GAMEPAD_IO_VOLUME)) ? (1 << ODROID_INPUT_VOLUME) : 0;
+    */
 #else
     int joyX = adc1_get_raw(ODROID_GAMEPAD_IO_X);
     int joyY = adc1_get_raw(ODROID_GAMEPAD_IO_Y);
@@ -207,31 +264,54 @@ void input_init(void)
     fail:
 
 #elif defined(TARGET_QTPY_ESP32_PICO)
-    gpio_set_direction(ODROID_GAMEPAD_IO_UP, GPIO_MODE_INPUT);
-    gpio_set_pull_mode(ODROID_GAMEPAD_IO_UP, GPIO_PULLUP_ONLY);
-    gpio_set_direction(ODROID_GAMEPAD_IO_DOWN, GPIO_MODE_INPUT);
-    gpio_set_pull_mode(ODROID_GAMEPAD_IO_DOWN, GPIO_PULLUP_ONLY);
-    gpio_set_direction(ODROID_GAMEPAD_IO_LEFT, GPIO_MODE_INPUT);
-    gpio_set_pull_mode(ODROID_GAMEPAD_IO_LEFT, GPIO_PULLUP_ONLY);
-    gpio_set_direction(ODROID_GAMEPAD_IO_RIGHT, GPIO_MODE_INPUT);
-    gpio_set_pull_mode(ODROID_GAMEPAD_IO_RIGHT, GPIO_PULLUP_ONLY);
+    const i2c_config_t i2c_config = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = GPIO_NUM_25,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_io_num = GPIO_NUM_33,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master.clk_speed = 100000,
+    };
+    esp_err_t err = ESP_FAIL;
 
-    gpio_set_direction(ODROID_GAMEPAD_IO_SELECT, GPIO_MODE_INPUT);
-    gpio_set_pull_mode(ODROID_GAMEPAD_IO_SELECT, GPIO_PULLUP_ONLY);
+    TRY(i2c_param_config(I2C_NUM_0, &i2c_config));
+    TRY(i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0));
+    ESP_LOGI(__func__, "I2C driver ready (SDA:%d SCL:%d).\n", i2c_config.sda_io_num, i2c_config.scl_io_num);
+    
 
-    gpio_set_direction(ODROID_GAMEPAD_IO_START, GPIO_MODE_INPUT);
-    gpio_set_pull_mode(ODROID_GAMEPAD_IO_START, GPIO_PULLUP_ONLY);
+    // soft reset
+    ESP_LOGI(__func__, "AW9523 Reset\n");
+    rg_i2c_write8(AW9523_DEFAULT_ADDR, AW9523_REG_SOFTRESET, 0);
+    // check id?
+    uint8_t id=0;
+    rg_i2c_read(AW9523_DEFAULT_ADDR, AW9523_REG_CHIPID, &id, 1);
+    ESP_LOGI(__func__, "AW9523 ID code 0x%x found\n", id);
+    assert(id == 0x23);
 
-    gpio_set_direction(ODROID_GAMEPAD_IO_A, GPIO_MODE_INPUT);
-    gpio_set_pull_mode(ODROID_GAMEPAD_IO_A, GPIO_PULLUP_ONLY);
+    // set gpio to input!
+    uint16_t buttonmask = (1<<AW_GAMEPAD_IO_UP) | (1<<AW_GAMEPAD_IO_DOWN) |
+      (1<<AW_GAMEPAD_IO_LEFT) | (1<<AW_GAMEPAD_IO_RIGHT) | (1<<AW_GAMEPAD_IO_SELECT) |
+      (1<<AW_GAMEPAD_IO_START) | (1<<AW_GAMEPAD_IO_A) | (1<<AW_GAMEPAD_IO_B) |
+      (1<<AW_GAMEPAD_IO_MENU) | (1<<AW_GAMEPAD_IO_VOLUME) | (1<<AW_CARDDET);
+    rg_i2c_write8(AW9523_DEFAULT_ADDR, AW9523_REG_CONFIG0, buttonmask & 0xFF);
+    rg_i2c_write8(AW9523_DEFAULT_ADDR, AW9523_REG_CONFIG0+1, buttonmask >> 8);
 
-    gpio_set_direction(ODROID_GAMEPAD_IO_B, GPIO_MODE_INPUT);
-    gpio_set_pull_mode(ODROID_GAMEPAD_IO_B, GPIO_PULLUP_ONLY);
+    rg_i2c_write8(AW9523_DEFAULT_ADDR, AW9523_REG_LEDMODE, 0xFF);
+    rg_i2c_write8(AW9523_DEFAULT_ADDR, AW9523_REG_LEDMODE+1, 0xFF);
+    
+    // pushpull mode
+    rg_i2c_write8(AW9523_DEFAULT_ADDR, AW9523_REG_GCR, 1<<4);
 
-    gpio_set_direction(ODROID_GAMEPAD_IO_MENU, GPIO_MODE_INPUT);
-    gpio_set_pull_mode(ODROID_GAMEPAD_IO_MENU, GPIO_PULLUP_ONLY);
+    // turn on backlight!
+    aw_digitalWrite(AW_TFT_BACKLIGHT, 1);
 
-    gpio_set_direction(ODROID_GAMEPAD_IO_VOLUME, GPIO_MODE_INPUT);
+    // tft reset
+    aw_digitalWrite(AW_TFT_RESET, 0);
+    vTaskDelay(pdMS_TO_TICKS(10));
+    aw_digitalWrite(AW_TFT_RESET, 1);
+    vTaskDelay(pdMS_TO_TICKS(10));
+
+    fail:
 
 #else
     gpio_set_direction(ODROID_GAMEPAD_IO_SELECT, GPIO_MODE_INPUT);
