@@ -29,14 +29,16 @@ extern void ff_diskio_register_sdmmc(unsigned char pdrv, sdmmc_card_t* card);
 
 #define DECLARE_SDCARD_CONFIG() \
         sdmmc_host_t host_config = SDSPI_HOST_DEFAULT(); \
-        host_config.slot = HSPI_HOST; \
-        host_config.max_freq_khz = SDMMC_FREQ_DEFAULT; \
-        sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT(); \
-        slot_config.gpio_miso = GPIO_NUM_12; \
-        slot_config.gpio_mosi = GPIO_NUM_13; \
-        slot_config.gpio_sck  = GPIO_NUM_14; \
-        slot_config.gpio_cs = GPIO_NUM_32; \
-        //slot_config.dma_channel = 2;
+        spi_bus_config_t bus_cfg = { \
+        .mosi_io_num = 13, \
+        .miso_io_num = 12, \
+        .sclk_io_num = 14, \
+        .quadwp_io_num = -1, \
+        .quadhd_io_num = -1, \
+        .max_transfer_sz = 4000,      }; \
+         sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT(); \
+         slot_config.gpio_cs = 32; \
+         slot_config.host_id = host_config.slot; \
 
 #else
 
@@ -167,6 +169,8 @@ void odroid_sdcard_files_free(char** files, int count)
 
 esp_err_t odroid_sdcard_open(void)
 {
+    esp_err_t ret;
+
     DECLARE_SDCARD_CONFIG();
 
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
@@ -174,7 +178,14 @@ esp_err_t odroid_sdcard_open(void)
         .max_files = 5,
     };
 
-    esp_err_t ret = esp_vfs_fat_sdmmc_mount(SDCARD_BASE_PATH, &host_config, &slot_config, &mount_config, NULL);
+
+    ret = spi_bus_initialize(host_config.slot, &bus_cfg, 1);
+    if (ret != ESP_OK) {
+        ESP_LOGE(__func__, "Failed to initialize bus.");
+        return ret;
+    }
+
+    ret = esp_vfs_fat_sdspi_mount(SDCARD_BASE_PATH, &host_config, &slot_config, &mount_config, NULL);
 
     if (ret == ESP_OK || ret == ESP_ERR_INVALID_STATE)
     {
