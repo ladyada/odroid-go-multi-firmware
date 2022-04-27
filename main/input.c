@@ -275,7 +275,7 @@ void input_init(void)
 #elif defined(TARGET_QTPY_ESP32_PICO)
     const i2c_config_t i2c_config = {
         .mode = I2C_MODE_MASTER,
-        .sda_io_num = GPIO_NUM_25,
+        .sda_io_num = GPIO_NUM_4,
         .sda_pullup_en = GPIO_PULLUP_ENABLE,
         .scl_io_num = GPIO_NUM_33,
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
